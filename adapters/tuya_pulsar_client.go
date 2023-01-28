@@ -11,10 +11,12 @@ import (
 	pulsar "github.com/tuya/tuya-pulsar-sdk-go"
 	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tylog"
 	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tyutils"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func init() {
-	tylog.SetGlobalLog("tuya-to-mqtt", true)
+	tylog.SetGlobalLog("tuya-to-mqtt", true, tylog.WithLevelOption(zap.NewAtomicLevelAt(zapcore.FatalLevel)))
 }
 
 type messageHandler struct {
@@ -24,7 +26,7 @@ type messageHandler struct {
 	log zerolog.Logger
 }
 
-func (h *messageHandler) HandlePayload(ctx context.Context, msg *pulsar.Message, payload []byte) error {
+func (h *messageHandler) HandlePayload(ctx context.Context, _ *pulsar.Message, payload []byte) error {
 	// let's decode the payload with AES
 	m := map[string]interface{}{}
 	err := json.Unmarshal(payload, &m)

@@ -8,8 +8,19 @@ type MQTTStatus struct {
 	Connected         bool
 }
 
+type MQTTMessage interface {
+	Duplicate() bool
+	Qos() byte
+	Retained() bool
+	Topic() string
+	MessageID() uint16
+	Payload() []byte
+	Ack()
+}
+
 type MQTTClient interface {
 	Publish(topic string, qos byte, retained bool, msg any) error
+	Subscribe(topic string, qos byte, handler func(msg MQTTMessage)) error
 
 	Connect() error
 	IsConnected() bool

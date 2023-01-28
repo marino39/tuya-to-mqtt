@@ -6,28 +6,17 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 	"tuya-to-mqtt/adapters"
 	"tuya-to-mqtt/application"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/rs/zerolog"
 	pulsar "github.com/tuya/tuya-pulsar-sdk-go"
 	"github.com/urfave/cli/v2"
 )
-
-var Flags = []cli.Flag{
-	FlagLogLevel,
-	FlagLogWriter,
-	FlagTuyaAccessID,
-	FlagTuyaAccessKey,
-	FlagTuyaPulsarRegion,
-	FlagMQTTUrl,
-	FlagMQTTClientID,
-	FlagMQTTUsername,
-	FlagMQTTPassword,
-	FlagMQTTTopic,
-}
 
 func main() {
 	var logger zerolog.Logger
@@ -35,7 +24,18 @@ func main() {
 	app := cli.App{
 		Name:    "tuya-to-mqtt",
 		Version: "v0.0.1",
-		Flags:   Flags,
+		Flags: []cli.Flag{
+			FlagLogLevel,
+			FlagLogWriter,
+			FlagTuyaAccessID,
+			FlagTuyaAccessKey,
+			FlagTuyaPulsarRegion,
+			FlagMQTTUrl,
+			FlagMQTTClientID,
+			FlagMQTTUsername,
+			FlagMQTTPassword,
+			FlagMQTTTopic,
+		},
 		Before: func(ctx *cli.Context) error {
 			var logWriter io.Writer
 			if ctx.String(FlagLogWriter.Name) == "console" {
@@ -75,6 +75,20 @@ func main() {
 				cancel()
 			}()
 
+			logger.Info().Msgf("mqtt broker: %s, client_id: %s", ctx.String(FlagMQTTUrl.Name), ctx.String(FlagMQTTClientID.Name))
+			mqttClient := adapters.NewMQTTClient(adapters.MQTTClientParams{
+				ClientID: ctx.String(FlagMQTTClientID.Name),
+				Username: ctx.String(FlagMQTTUsername.Name),
+				Password: ctx.String(FlagMQTTPassword.Name),
+				MQTTUrl:  ctx.String(FlagMQTTUrl.Name),
+				Log:      logger.With().Str("module", "mqtt-client").Logger(),
+			})
+
+			err := mqttClient.Connect()
+			if err != nil {
+				return err
+			}
+
 			var pulsarAddress string
 			switch ctx.String(FlagTuyaPulsarRegion.Name) {
 			case "US":
@@ -102,20 +116,6 @@ func main() {
 				return err
 			}
 
-			logger.Info().Msgf("mqtt broker: %s, client_id: %s", ctx.String(FlagMQTTUrl.Name), ctx.String(FlagMQTTClientID.Name))
-			mqttClient := adapters.NewMQTTClient(adapters.MQTTClientParams{
-				ClientID: ctx.String(FlagMQTTClientID.Name),
-				Username: ctx.String(FlagMQTTUsername.Name),
-				Password: ctx.String(FlagMQTTPassword.Name),
-				MQTTUrl:  ctx.String(FlagMQTTUrl.Name),
-				Log:      logger.With().Str("module", "mqtt-client").Logger(),
-			})
-
-			err = mqttClient.Connect()
-			if err != nil {
-				return err
-			}
-
 			tuyaToMQTTService, err := application.NewTuyaToMQTTService(application.TuyaToMQTTServiceParams{
 				TuyaPulsarClient: tuyaPulsarClient,
 				MQTTClient:       mqttClient,
@@ -135,6 +135,76 @@ func main() {
 			logger.Info().Msg("service terminating...")
 			return nil
 		},
+		Commands: []*cli.Command{
+			{
+				Name: "publish",
+				Flags: []cli.Flag{
+					FlagPublishJSON,
+				},
+				Action: func(ctx *cli.Context) error {
+					mqttClient := adapters.NewMQTTClient(adapters.MQTTClientParams{
+						ClientID: ctx.String(FlagMQTTClientID.Name),
+						Username: ctx.String(FlagMQTTUsername.Name),
+						Password: ctx.String(FlagMQTTPassword.Name),
+						MQTTUrl:  ctx.String(FlagMQTTUrl.Name),
+					})
+
+					err := mqttClient.Connect()
+					if err != nil {
+						return err
+					}
+
+					for _, payload := range ctx.StringSlice(FlagPublishJSON.Name) {
+						err = mqttClient.Publish(ctx.String(FlagMQTTTopic.Name), 0, true, payload)
+						if err != nil {
+							return err
+						}
+					}
+
+					return nil
+				},
+			},
+			{
+				Name: "subscribe",
+				Action: func(ctx *cli.Context) error {
+					mqttClient := adapters.NewMQTTClient(adapters.MQTTClientParams{
+						ClientID: ctx.String(FlagMQTTClientID.Name),
+						Username: ctx.String(FlagMQTTUsername.Name),
+						Password: ctx.String(FlagMQTTPassword.Name),
+						MQTTUrl:  ctx.String(FlagMQTTUrl.Name),
+					})
+
+					err := mqttClient.Connect()
+					if err != nil {
+						return err
+					}
+
+					err = mqttClient.Subscribe(ctx.String(FlagMQTTTopic.Name), 0, func(msg application.MQTTMessage) {
+						spew.Dump(msg.Payload())
+						msg.Ack()
+					})
+					if err != nil {
+						return err
+					}
+
+					wg := sync.WaitGroup{}
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						c := make(chan os.Signal)
+						signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+						<-c
+
+						logger.Warn().Msg("interrupt signal received")
+					}()
+
+					wg.Wait()
+					return nil
+				},
+			},
+			{},
+		},
 		Authors: []*cli.Author{
 			{
 				Name:  "Marcin Gorzynski",
@@ -144,6 +214,6 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		logger.Err(err).Msg("service terminated")
+		fmt.Printf(err.Error())
 	}
 }

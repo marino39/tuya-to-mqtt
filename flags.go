@@ -69,3 +69,15 @@ var FlagMQTTTopic = &cli.StringFlag{
 	Value:    "tuya-devices",
 	Required: false,
 }
+
+var FlagPublishN = &cli.IntFlag{
+	Name:        "N",
+	DefaultText: "1",
+	Value:       1,
+	Required:    false,
+}
+
+var FlagPublishJSON = &cli.StringSliceFlag{
+	Name:     "json",
+	Required: true,
+}

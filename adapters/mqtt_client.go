@@ -66,7 +66,7 @@ func (m *MQTTClient) Connect() error {
 	opts.SetUsername(m.params.Username)
 	opts.SetPassword(m.params.Password)
 
-	//opts.SetDefaultPublishHandler(m.PublishHandler)
+	opts.SetDefaultPublishHandler(m.PublishHandler)
 	opts.OnConnect = m.OnConnect
 	opts.OnConnectionLost = m.OnConnectionLost
 
@@ -114,9 +114,21 @@ func (m *MQTTClient) Publish(topic string, qos byte, retained bool, msg any) err
 	return nil
 }
 
-/*func (m *MQTTClient) PublishHandler(client mqtt.Client, msg mqtt.Message) {
+func (m *MQTTClient) Subscribe(topic string, qos byte, handler func(msg application.MQTTMessage)) error {
+	token := m.client.Subscribe(topic, qos, func(client mqtt.Client, msg mqtt.Message) {
+		handler(msg)
+	})
+
+	if token.Wait() && token.Error() != nil {
+		return token.Error()
+	}
+	return nil
+}
+
+func (m *MQTTClient) PublishHandler(client mqtt.Client, msg mqtt.Message) {
 	// do nothing
-}*/
+	fmt.Printf("publish handler\n")
+}
 
 func (m *MQTTClient) OnConnect(client mqtt.Client) {
 	m.log.Info().Msgf("connected")

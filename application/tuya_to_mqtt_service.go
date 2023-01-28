@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -44,6 +43,9 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 
 	// tuya message handler
 	g.Go(func() error {
+		t.log.Info().Msgf("start publishing on topic: %s", t.params.MQTTTopic)
+		defer t.log.Info().Msg("stop publishing")
+
 		return t.params.TuyaPulsarClient.Subscribe(ctx, func(ctx context.Context, m *Message) error {
 			return t.params.MQTTClient.Publish(t.params.MQTTTopic, 0, true, m)
 		})
@@ -52,23 +54,29 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 	// mqtt publish reported
 	g.Go(func() error {
 		ticker := time.NewTicker(30 * time.Second)
+		lastStatus := MQTTStatus{}
 
 	ReporterLoop:
 		for {
-			var lastStatus MQTTStatus
 			select {
 			case <-ctx.Done():
 				break ReporterLoop
 			case <-ticker.C:
 				newStatus := t.params.MQTTClient.Status()
-				if lastStatus.MessageCount != 0 {
+				if lastStatus.Connected != false {
 					msgCountDiff := newStatus.MessageCount - lastStatus.MessageCount
 					timeDiff := newStatus.LastTimePublished.Unix() - lastStatus.LastTimePublished.Unix()
 
-					log.Info().
-						Uint64("msgs_per_sec", msgCountDiff/uint64(timeDiff)).
+					msgPerSec := uint64(0)
+					if timeDiff != 0 {
+						msgPerSec = msgCountDiff / uint64(timeDiff*60)
+					}
+
+					t.log.Info().
+						Uint64("msg_per_min", msgPerSec).
 						Bool("is_connected", newStatus.Connected).
-						Time("last_time_published", newStatus.LastTimePublished)
+						Time("last_time_published", newStatus.LastTimePublished).
+						Msg("publish report")
 				}
 				lastStatus = newStatus
 			}

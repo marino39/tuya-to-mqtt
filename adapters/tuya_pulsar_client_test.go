@@ -168,53 +168,63 @@ func TestTuyaPulsarClient_Subscribe_WrongAccessKey(t *testing.T) {
 	mPulsarConsumer.AssertExpectations(t)
 }
 
-func TestTuyaPulsarClient_Subscribe_MalformedMessageData(t *testing.T) {
-	accessID := "access_id"
-	accessKey := "123456789012345678901234"
-
-	mPulsarClient := &MockPulsarClient{}
-	mPulsarConsumer := &MockPulsarConsumer{}
-
-	tuyaPulsarClient, err := NewTuyaPulsarClient(TuyaPulsarClientParams{
-		AccessID:     accessID,
-		AccessKey:    accessKey,
-		PulsarClient: mPulsarClient,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, tuyaPulsarClient)
-
-	messageToSend := application.Message{
-		DataID:     "1",
-		DevID:      "2",
-		ProductKey: "ab1",
-		Status: []application.Status{
-			{
-				Code:      "switch",
-				Timestamp: uint64(time.Now().Unix()),
-				Value:     false,
-			},
-		},
+func TestTuyaPulsarClient_Subscribe_MalformedPayload(t *testing.T) {
+	makePayloadFuncs := map[string]func(t *testing.T, message application.Message, accessKey string) []byte{
+		"MalformedPayload": buildPulsarMalformedPayload,
+		"MalformedData":    buildPulsarMalformedData,
+		"MalformedBase64":  buildPulsarMalformedBase64,
 	}
-	expectedMessage := application.Message{}
 
-	mPulsarClient.On("NewConsumer", mock.Anything).Return(mPulsarConsumer, nil).Once()
-	mPulsarConsumer.On("ReceiveAndHandle", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-		f := args.Get(1).(pulsar.PayloadHandler)
-		err := f.HandlePayload(context.Background(), nil, buildPulsarMalformedPayload(t, messageToSend, accessKey))
-		require.Error(t, err)
-	}).Return().Once()
-	mPulsarConsumer.On("Stop").Return().Once()
+	for testCase, makePayloadFunc := range makePayloadFuncs {
+		t.Run(testCase, func(t *testing.T) {
+			accessID := "access_id"
+			accessKey := "123456789012345678901234"
 
-	var receivedMessage application.Message
-	err = tuyaPulsarClient.Subscribe(context.Background(), func(ctx context.Context, msg application.Message) error {
-		receivedMessage = msg
-		return nil
-	})
-	assert.NoError(t, err)
-	assert.Equal(t, expectedMessage, receivedMessage)
+			mPulsarClient := &MockPulsarClient{}
+			mPulsarConsumer := &MockPulsarConsumer{}
 
-	mPulsarClient.AssertExpectations(t)
-	mPulsarConsumer.AssertExpectations(t)
+			tuyaPulsarClient, err := NewTuyaPulsarClient(TuyaPulsarClientParams{
+				AccessID:     accessID,
+				AccessKey:    accessKey,
+				PulsarClient: mPulsarClient,
+			})
+			require.NoError(t, err)
+			require.NotNil(t, tuyaPulsarClient)
+
+			messageToSend := application.Message{
+				DataID:     "1",
+				DevID:      "2",
+				ProductKey: "ab1",
+				Status: []application.Status{
+					{
+						Code:      "switch",
+						Timestamp: uint64(time.Now().Unix()),
+						Value:     false,
+					},
+				},
+			}
+			expectedMessage := application.Message{}
+
+			mPulsarClient.On("NewConsumer", mock.Anything).Return(mPulsarConsumer, nil).Once()
+			mPulsarConsumer.On("ReceiveAndHandle", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+				f := args.Get(1).(pulsar.PayloadHandler)
+				err := f.HandlePayload(context.Background(), nil, makePayloadFunc(t, messageToSend, accessKey))
+				require.Error(t, err)
+			}).Return().Once()
+			mPulsarConsumer.On("Stop").Return().Once()
+
+			var receivedMessage application.Message
+			err = tuyaPulsarClient.Subscribe(context.Background(), func(ctx context.Context, msg application.Message) error {
+				receivedMessage = msg
+				return nil
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, expectedMessage, receivedMessage)
+
+			mPulsarClient.AssertExpectations(t)
+			mPulsarConsumer.AssertExpectations(t)
+		})
+	}
 }
 
 func buildPulsarPayload(t *testing.T, message application.Message, accessKey string) []byte {
@@ -231,7 +241,22 @@ func buildPulsarPayload(t *testing.T, message application.Message, accessKey str
 	return payload
 }
 
-func buildPulsarMalformedPayload(t *testing.T, message application.Message, accessKey string) []byte {
+func buildPulsarMalformedBase64(t *testing.T, message application.Message, accessKey string) []byte {
+	data, err := json.Marshal(message)
+	require.NoError(t, err)
+
+	encData := tyutils.EcbEncrypt(data, []byte(accessKey[8:24]))
+
+	dataBase64 := base64.StdEncoding.EncodeToString(encData)
+	dataBase64 += "Ó"
+
+	payload, err := json.Marshal(map[string]interface{}{"data": dataBase64})
+	require.NoError(t, err)
+
+	return payload
+}
+
+func buildPulsarMalformedData(t *testing.T, message application.Message, accessKey string) []byte {
 	data, err := json.Marshal(message)
 	require.NoError(t, err)
 
@@ -243,4 +268,18 @@ func buildPulsarMalformedPayload(t *testing.T, message application.Message, acce
 	require.NoError(t, err)
 
 	return payload
+}
+
+func buildPulsarMalformedPayload(t *testing.T, message application.Message, accessKey string) []byte {
+	data, err := json.Marshal(message)
+	require.NoError(t, err)
+
+	encData := tyutils.EcbEncrypt(data, []byte(accessKey[8:24]))
+
+	dataBase64 := base64.StdEncoding.EncodeToString(encData)
+
+	payload, err := json.Marshal(map[string]interface{}{"data": dataBase64})
+	require.NoError(t, err)
+
+	return payload[len(payload)/2:]
 }

@@ -83,10 +83,14 @@ func main() {
 			}
 
 			logger.Info().Msgf("pulsar endpoint: %s", pulsarAddress)
+			pulsarClient := pulsar.NewClient(pulsar.ClientConfig{
+				PulsarAddr: pulsarAddress,
+			})
+
 			tuyaPulsarClient := adapters.NewTuyaPulsarClient(adapters.TuyaPulsarClientParams{
-				AccessID:      ctx.String(FlagTuyaAccessID.Name),
-				AccessKey:     ctx.String(FlagTuyaAccessKey.Name),
-				PulsarAddress: pulsarAddress,
+				AccessID:     ctx.String(FlagTuyaAccessID.Name),
+				AccessKey:    ctx.String(FlagTuyaAccessKey.Name),
+				PulsarClient: pulsarClient,
 			})
 
 			tuyaToMQTTService, err := application.NewTuyaToMQTTService(application.TuyaToMQTTServiceParams{

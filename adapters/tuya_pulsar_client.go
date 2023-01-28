@@ -45,9 +45,10 @@ func (h *messageHandler) HandlePayload(ctx context.Context, msg *pulsar.Message,
 }
 
 type TuyaPulsarClientParams struct {
-	AccessID      string
-	AccessKey     string
-	PulsarAddress string
+	AccessID  string
+	AccessKey string
+
+	PulsarClient pulsar.Client
 }
 
 type TuyaPulsarClient struct {
@@ -60,9 +61,7 @@ type TuyaPulsarClient struct {
 func NewTuyaPulsarClient(params TuyaPulsarClientParams) *TuyaPulsarClient {
 	return &TuyaPulsarClient{
 		accessKey: params.AccessKey,
-		client: pulsar.NewClient(pulsar.ClientConfig{
-			PulsarAddr: params.PulsarAddress,
-		}),
+		client:    params.PulsarClient,
 		consumerCfg: pulsar.ConsumerConfig{
 			Topic: pulsar.TopicForAccessID(params.AccessID),
 			Auth:  pulsar.NewAuthProvider(params.AccessID, params.AccessKey),

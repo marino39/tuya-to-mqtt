@@ -87,15 +87,22 @@ func main() {
 				PulsarAddr: pulsarAddress,
 			})
 
-			tuyaPulsarClient := adapters.NewTuyaPulsarClient(adapters.TuyaPulsarClientParams{
+			tuyaPulsarClient, err := adapters.NewTuyaPulsarClient(adapters.TuyaPulsarClientParams{
 				AccessID:     ctx.String(FlagTuyaAccessID.Name),
 				AccessKey:    ctx.String(FlagTuyaAccessKey.Name),
 				PulsarClient: pulsarClient,
+				Log:          logger.With().Str("module", "pulsar-client").Logger(),
 			})
+			if err != nil {
+				return err
+			}
 
 			tuyaToMQTTService, err := application.NewTuyaToMQTTService(application.TuyaToMQTTServiceParams{
 				TuyaPulsarClient: tuyaPulsarClient,
 			})
+			if err != nil {
+				return err
+			}
 
 			logger.Info().Msg("service started")
 			err = tuyaToMQTTService.Run(appCtx)

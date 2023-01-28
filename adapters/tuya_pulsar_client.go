@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"tuya-to-mqtt/application"
 
 	"github.com/rs/zerolog"
@@ -18,6 +19,13 @@ import (
 func init() {
 	tylog.SetGlobalLog("tuya-to-mqtt", true, tylog.WithLevelOption(zap.NewAtomicLevelAt(zapcore.FatalLevel)))
 }
+
+type PulsarEnvironment int
+
+const (
+	PulsarEnvironmentProd PulsarEnvironment = 0
+	PulsarEnvironmentTest                   = 1
+)
 
 type messageHandler struct {
 	aesSecret     string
@@ -57,7 +65,8 @@ type TuyaPulsarClientParams struct {
 	AccessID  string
 	AccessKey string
 
-	PulsarClient pulsar.Client
+	PulsarClient      pulsar.Client
+	PulsarEnvironment PulsarEnvironment
 
 	Log zerolog.Logger
 }
@@ -80,11 +89,16 @@ func NewTuyaPulsarClient(params TuyaPulsarClientParams) (*TuyaPulsarClient, erro
 		return nil, fmt.Errorf("access key needs to be at least 24 characters long")
 	}
 
+	topic := pulsar.TopicForAccessID(params.AccessID)
+	if params.PulsarEnvironment == PulsarEnvironmentTest {
+		topic = strings.Replace(topic, "event", "event-test", 1)
+	}
+
 	return &TuyaPulsarClient{
 		accessKey: params.AccessKey,
 		client:    params.PulsarClient,
 		consumerCfg: pulsar.ConsumerConfig{
-			Topic: pulsar.TopicForAccessID(params.AccessID),
+			Topic: topic,
 			Auth:  pulsar.NewAuthProvider(params.AccessID, params.AccessKey),
 		},
 		log: params.Log,

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -46,8 +47,12 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 		t.log.Info().Msgf("start publishing on topic: %s", t.params.MQTTTopic)
 		defer t.log.Info().Msg("stop publishing")
 
-		return t.params.TuyaPulsarClient.Subscribe(ctx, func(ctx context.Context, m *Message) error {
-			return t.params.MQTTClient.Publish(t.params.MQTTTopic, 0, true, m)
+		return t.params.TuyaPulsarClient.Subscribe(ctx, func(ctx context.Context, msg *Message) error {
+			msgData, err := json.Marshal(msg)
+			if err != nil {
+				return err
+			}
+			return t.params.MQTTClient.Publish(t.params.MQTTTopic, 0, true, msgData)
 		})
 	})
 

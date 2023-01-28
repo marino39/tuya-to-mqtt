@@ -12,7 +12,6 @@ import (
 	"tuya-to-mqtt/adapters"
 	"tuya-to-mqtt/application"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/rs/zerolog"
 	pulsar "github.com/tuya/tuya-pulsar-sdk-go"
 	"github.com/urfave/cli/v2"
@@ -30,6 +29,7 @@ func main() {
 			FlagTuyaAccessID,
 			FlagTuyaAccessKey,
 			FlagTuyaPulsarRegion,
+			FlagTuyaPulsarEnv,
 			FlagMQTTUrl,
 			FlagMQTTClientID,
 			FlagMQTTUsername,
@@ -101,16 +101,22 @@ func main() {
 				return fmt.Errorf("invalid tuya pulsar region")
 			}
 
-			logger.Info().Msgf("pulsar endpoint: %s", pulsarAddress)
+			pulsarEnv := adapters.PulsarEnvironmentProd
+			if ctx.String(FlagTuyaPulsarEnv.Name) == "TEST" {
+				pulsarEnv = adapters.PulsarEnvironmentTest
+			}
+
+			logger.Info().Msgf("pulsar endpoint: %s env: %s", pulsarAddress, ctx.String(FlagTuyaPulsarEnv.Name))
 			pulsarClient := pulsar.NewClient(pulsar.ClientConfig{
 				PulsarAddr: pulsarAddress,
 			})
 
 			tuyaPulsarClient, err := adapters.NewTuyaPulsarClient(adapters.TuyaPulsarClientParams{
-				AccessID:     ctx.String(FlagTuyaAccessID.Name),
-				AccessKey:    ctx.String(FlagTuyaAccessKey.Name),
-				PulsarClient: pulsarClient,
-				Log:          logger.With().Str("module", "pulsar-client").Logger(),
+				AccessID:          ctx.String(FlagTuyaAccessID.Name),
+				AccessKey:         ctx.String(FlagTuyaAccessKey.Name),
+				PulsarClient:      pulsarClient,
+				PulsarEnvironment: pulsarEnv,
+				Log:               logger.With().Str("module", "pulsar-client").Logger(),
 			})
 			if err != nil {
 				return err
@@ -180,7 +186,7 @@ func main() {
 					}
 
 					err = mqttClient.Subscribe(ctx.String(FlagMQTTTopic.Name), 0, func(msg application.MQTTMessage) {
-						spew.Dump(msg.Payload())
+						fmt.Println(string(msg.Payload()))
 						msg.Ack()
 					})
 					if err != nil {

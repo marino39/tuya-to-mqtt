@@ -33,8 +33,16 @@ var FlagTuyaAccessKey = &cli.StringFlag{
 var FlagTuyaPulsarRegion = &cli.StringFlag{
 	Name:     "tuya-pulsar-region",
 	Usage:    "one of: [EU, US, CN]",
-	EnvVars:  []string{"TUYA_ACCESS_REGION"},
+	EnvVars:  []string{"TUYA_PULSAR_REGION"},
 	Value:    "EU",
+	Required: false,
+}
+
+var FlagTuyaPulsarEnv = &cli.StringFlag{
+	Name:     "tuya-pulsar-env",
+	Usage:    "one of: [PROD, TEST]",
+	EnvVars:  []string{"TUYA_PULSAR_ENV"},
+	Value:    "PROD",
 	Required: false,
 }
 

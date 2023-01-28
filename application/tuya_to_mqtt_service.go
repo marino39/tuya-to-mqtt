@@ -45,7 +45,7 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 	// tuya message handler
 	g.Go(func() error {
 		return t.params.TuyaPulsarClient.Subscribe(ctx, func(ctx context.Context, m *Message) error {
-			return t.params.MQTTClient.Publish(t.params.MQTTTopic, 0, false, m)
+			return t.params.MQTTClient.Publish(t.params.MQTTTopic, 0, true, m)
 		})
 	})
 

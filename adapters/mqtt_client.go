@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -10,11 +11,17 @@ import (
 	"github.com/rs/zerolog"
 )
 
+var (
+	ErrMQTTNotConnected = fmt.Errorf("not connected")
+)
+
 type MQTTClientParams struct {
 	ClientID string
 	Username string
 	Password string
 	MQTTUrl  string
+
+	NewClientFunc func(options *mqtt.ClientOptions) mqtt.Client
 
 	Log zerolog.Logger
 }
@@ -34,19 +41,23 @@ type MQTTClient struct {
 }
 
 func NewMQTTClient(params MQTTClientParams) *MQTTClient {
-	mqtt := &MQTTClient{
+	m := &MQTTClient{
 		params: params,
 		log:    params.Log,
 	}
 
-	t := time.Now()
-	mqtt.msgCountUpdateTime.Store(&t)
-	return mqtt
+	t := time.Unix(0, 0)
+	m.msgCountUpdateTime.Store(&t)
+	return m
 }
 
 func (m *MQTTClient) Connect() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if atomic.LoadUint64(&m.connected) == 1 {
+		return nil
+	}
 
 	opts := mqtt.NewClientOptions()
 
@@ -55,15 +66,21 @@ func (m *MQTTClient) Connect() error {
 	opts.SetUsername(m.params.Username)
 	opts.SetPassword(m.params.Password)
 
-	opts.SetDefaultPublishHandler(m.PublishHandler)
+	//opts.SetDefaultPublishHandler(m.PublishHandler)
 	opts.OnConnect = m.OnConnect
 	opts.OnConnectionLost = m.OnConnectionLost
 
-	m.client = mqtt.NewClient(opts)
+	if m.params.NewClientFunc == nil {
+		m.client = mqtt.NewClient(opts)
+	} else {
+		m.client = m.params.NewClientFunc(opts)
+	}
+
 	if token := m.client.Connect(); token.Wait() && token.Error() != nil {
-		token.Wait()
 		return token.Error()
 	}
+
+	atomic.StoreUint64(&m.connected, 1)
 	return nil
 }
 
@@ -83,16 +100,23 @@ func (m *MQTTClient) Status() application.MQTTStatus {
 }
 
 func (m *MQTTClient) Publish(topic string, qos byte, retained bool, msg any) error {
-	token := m.client.Publish(topic, qos, retained, msg)
-	token.Wait()
-	return token.Error()
-}
+	if !m.IsConnected() {
+		return ErrMQTTNotConnected
+	}
 
-func (m *MQTTClient) PublishHandler(client mqtt.Client, msg mqtt.Message) {
+	if token := m.client.Publish(topic, qos, retained, msg); token.Wait() && token.Error() != nil {
+		return token.Error()
+	}
+
 	t := time.Now()
 	m.msgCountUpdateTime.Store(&t)
 	atomic.AddUint64(&m.msgCount, 1)
+	return nil
 }
+
+/*func (m *MQTTClient) PublishHandler(client mqtt.Client, msg mqtt.Message) {
+	// do nothing
+}*/
 
 func (m *MQTTClient) OnConnect(client mqtt.Client) {
 	m.log.Info().Msgf("connected")

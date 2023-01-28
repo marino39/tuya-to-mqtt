@@ -74,7 +74,7 @@ var FlagMQTTPassword = &cli.StringFlag{
 var FlagMQTTTopic = &cli.StringFlag{
 	Name:     "mqtt-topic",
 	EnvVars:  []string{"MQTT_TOPIC"},
-	Value:    "tuya-devices",
+	Value:    "topic/tuya-devices",
 	Required: false,
 }
 

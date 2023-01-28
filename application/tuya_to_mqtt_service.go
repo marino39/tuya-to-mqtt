@@ -72,16 +72,17 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 					msgCountDiff := newStatus.MessageCount - lastStatus.MessageCount
 					timeDiff := newStatus.LastTimePublished.Unix() - lastStatus.LastTimePublished.Unix()
 
-					msgPerSec := uint64(0)
+					msgPerMin := uint64(0)
 					if timeDiff != 0 {
-						msgPerSec = msgCountDiff / uint64(timeDiff*60)
+						msgPerMin = (msgCountDiff * 60) / uint64(timeDiff)
 					}
 
 					t.log.Info().
-						Uint64("msg_per_min", msgPerSec).
-						Bool("is_connected", newStatus.Connected).
-						Time("last_time_published", newStatus.LastTimePublished).
-						Msg("publish report")
+						Uint64("mqtt_msg_per_min", msgPerMin).
+						Uint64("mqtt_msg_total", newStatus.MessageCount).
+						Bool("mqtt_is_connected", newStatus.Connected).
+						Time("mqtt_last_published", newStatus.LastTimePublished).
+						Msg("mqtt publish report")
 				}
 				lastStatus = newStatus
 			}

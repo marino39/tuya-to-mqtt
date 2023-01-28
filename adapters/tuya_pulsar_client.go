@@ -21,7 +21,7 @@ func init() {
 
 type messageHandler struct {
 	aesSecret     string
-	clientHandler func(ctx context.Context, msg application.Message) error
+	clientHandler func(ctx context.Context, msg *application.Message) error
 
 	log zerolog.Logger
 }
@@ -50,7 +50,7 @@ func (h *messageHandler) HandlePayload(ctx context.Context, _ *pulsar.Message, p
 		return err
 	}
 
-	return h.clientHandler(ctx, appMsg)
+	return h.clientHandler(ctx, &appMsg)
 }
 
 type TuyaPulsarClientParams struct {
@@ -91,7 +91,7 @@ func NewTuyaPulsarClient(params TuyaPulsarClientParams) (*TuyaPulsarClient, erro
 	}, nil
 }
 
-func (t *TuyaPulsarClient) Subscribe(ctx context.Context, handlerFunc func(ctx context.Context, m application.Message) error) error {
+func (t *TuyaPulsarClient) Subscribe(ctx context.Context, handlerFunc func(ctx context.Context, msg *application.Message) error) error {
 	c, err := t.client.NewConsumer(t.consumerCfg)
 	if err != nil {
 		return err

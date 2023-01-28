@@ -16,5 +16,5 @@ type Message struct {
 }
 
 type TuyaPulsarClient interface {
-	Subscribe(ctx context.Context, handlerFunc func(ctx context.Context, msg Message) error) error
+	Subscribe(ctx context.Context, handlerFunc func(ctx context.Context, msg *Message) error) error
 }

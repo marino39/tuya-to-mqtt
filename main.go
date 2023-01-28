@@ -22,6 +22,11 @@ var Flags = []cli.Flag{
 	FlagTuyaAccessID,
 	FlagTuyaAccessKey,
 	FlagTuyaPulsarRegion,
+	FlagMQTTUrl,
+	FlagMQTTClientID,
+	FlagMQTTUsername,
+	FlagMQTTPassword,
+	FlagMQTTTopic,
 }
 
 func main() {
@@ -97,8 +102,25 @@ func main() {
 				return err
 			}
 
+			logger.Info().Msgf("mqtt broker: %s, client_id: %s", ctx.String(FlagMQTTUrl.Name), ctx.String(FlagMQTTClientID.Name))
+			mqttClient := adapters.NewMQTTClient(adapters.MQTTClientParams{
+				ClientID: ctx.String(FlagMQTTClientID.Name),
+				Username: ctx.String(FlagMQTTUsername.Name),
+				Password: ctx.String(FlagMQTTPassword.Name),
+				MQTTUrl:  ctx.String(FlagMQTTUrl.Name),
+				Log:      logger.With().Str("module", "mqtt-client").Logger(),
+			})
+
+			err = mqttClient.Connect()
+			if err != nil {
+				return err
+			}
+
 			tuyaToMQTTService, err := application.NewTuyaToMQTTService(application.TuyaToMQTTServiceParams{
 				TuyaPulsarClient: tuyaPulsarClient,
+				MQTTClient:       mqttClient,
+				MQTTTopic:        ctx.String(FlagMQTTTopic.Name),
+				Log:              logger.With().Str("module", "tuya_to_mqtt_service").Logger(),
 			})
 			if err != nil {
 				return err

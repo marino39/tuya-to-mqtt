@@ -61,7 +61,7 @@ func TestTuyaPulsarClient_Subscribe(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, tuyaPulsarClient)
 
-	expectedMessage := application.Message{
+	expectedMessage := &application.Message{
 		DataID:     "1",
 		DevID:      "2",
 		ProductKey: "ab1",
@@ -82,8 +82,8 @@ func TestTuyaPulsarClient_Subscribe(t *testing.T) {
 	}).Return().Once()
 	mPulsarConsumer.On("Stop").Return().Once()
 
-	var receivedMessage application.Message
-	err = tuyaPulsarClient.Subscribe(context.Background(), func(ctx context.Context, msg application.Message) error {
+	var receivedMessage *application.Message
+	err = tuyaPulsarClient.Subscribe(context.Background(), func(ctx context.Context, msg *application.Message) error {
 		receivedMessage = msg
 		return nil
 	})
@@ -110,7 +110,7 @@ func TestTuyaPulsarClient_Subscribe_FailedToCreateConsumer(t *testing.T) {
 
 	mPulsarClient.On("NewConsumer", mock.Anything).Return(nil, fmt.Errorf("fail")).Once()
 
-	err = tuyaPulsarClient.Subscribe(context.Background(), func(ctx context.Context, msg application.Message) error {
+	err = tuyaPulsarClient.Subscribe(context.Background(), func(ctx context.Context, msg *application.Message) error {
 		return nil
 	})
 	assert.Error(t, err)
@@ -134,7 +134,7 @@ func TestTuyaPulsarClient_Subscribe_WrongAccessKey(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, tuyaPulsarClient)
 
-	messageToSend := application.Message{
+	messageToSend := &application.Message{
 		DataID:     "1",
 		DevID:      "2",
 		ProductKey: "ab1",
@@ -146,7 +146,6 @@ func TestTuyaPulsarClient_Subscribe_WrongAccessKey(t *testing.T) {
 			},
 		},
 	}
-	expectedMessage := application.Message{}
 
 	mPulsarClient.On("NewConsumer", mock.Anything).Return(mPulsarConsumer, nil).Once()
 	mPulsarConsumer.On("ReceiveAndHandle", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
@@ -156,20 +155,20 @@ func TestTuyaPulsarClient_Subscribe_WrongAccessKey(t *testing.T) {
 	}).Return().Once()
 	mPulsarConsumer.On("Stop").Return().Once()
 
-	var receivedMessage application.Message
-	err = tuyaPulsarClient.Subscribe(context.Background(), func(ctx context.Context, msg application.Message) error {
+	var receivedMessage *application.Message
+	err = tuyaPulsarClient.Subscribe(context.Background(), func(ctx context.Context, msg *application.Message) error {
 		receivedMessage = msg
 		return nil
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, expectedMessage, receivedMessage)
+	assert.Nil(t, receivedMessage)
 
 	mPulsarClient.AssertExpectations(t)
 	mPulsarConsumer.AssertExpectations(t)
 }
 
 func TestTuyaPulsarClient_Subscribe_MalformedPayload(t *testing.T) {
-	makePayloadFuncs := map[string]func(t *testing.T, message application.Message, accessKey string) []byte{
+	makePayloadFuncs := map[string]func(t *testing.T, message *application.Message, accessKey string) []byte{
 		"MalformedPayload": buildPulsarMalformedPayload,
 		"MalformedData":    buildPulsarMalformedData,
 		"MalformedBase64":  buildPulsarMalformedBase64,
@@ -191,7 +190,7 @@ func TestTuyaPulsarClient_Subscribe_MalformedPayload(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, tuyaPulsarClient)
 
-			messageToSend := application.Message{
+			messageToSend := &application.Message{
 				DataID:     "1",
 				DevID:      "2",
 				ProductKey: "ab1",
@@ -203,7 +202,6 @@ func TestTuyaPulsarClient_Subscribe_MalformedPayload(t *testing.T) {
 					},
 				},
 			}
-			expectedMessage := application.Message{}
 
 			mPulsarClient.On("NewConsumer", mock.Anything).Return(mPulsarConsumer, nil).Once()
 			mPulsarConsumer.On("ReceiveAndHandle", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
@@ -213,13 +211,13 @@ func TestTuyaPulsarClient_Subscribe_MalformedPayload(t *testing.T) {
 			}).Return().Once()
 			mPulsarConsumer.On("Stop").Return().Once()
 
-			var receivedMessage application.Message
-			err = tuyaPulsarClient.Subscribe(context.Background(), func(ctx context.Context, msg application.Message) error {
+			var receivedMessage *application.Message
+			err = tuyaPulsarClient.Subscribe(context.Background(), func(ctx context.Context, msg *application.Message) error {
 				receivedMessage = msg
 				return nil
 			})
 			assert.NoError(t, err)
-			assert.Equal(t, expectedMessage, receivedMessage)
+			assert.Nil(t, receivedMessage)
 
 			mPulsarClient.AssertExpectations(t)
 			mPulsarConsumer.AssertExpectations(t)
@@ -227,7 +225,7 @@ func TestTuyaPulsarClient_Subscribe_MalformedPayload(t *testing.T) {
 	}
 }
 
-func buildPulsarPayload(t *testing.T, message application.Message, accessKey string) []byte {
+func buildPulsarPayload(t *testing.T, message *application.Message, accessKey string) []byte {
 	data, err := json.Marshal(message)
 	require.NoError(t, err)
 
@@ -241,7 +239,7 @@ func buildPulsarPayload(t *testing.T, message application.Message, accessKey str
 	return payload
 }
 
-func buildPulsarMalformedBase64(t *testing.T, message application.Message, accessKey string) []byte {
+func buildPulsarMalformedBase64(t *testing.T, message *application.Message, accessKey string) []byte {
 	data, err := json.Marshal(message)
 	require.NoError(t, err)
 
@@ -256,7 +254,7 @@ func buildPulsarMalformedBase64(t *testing.T, message application.Message, acces
 	return payload
 }
 
-func buildPulsarMalformedData(t *testing.T, message application.Message, accessKey string) []byte {
+func buildPulsarMalformedData(t *testing.T, message *application.Message, accessKey string) []byte {
 	data, err := json.Marshal(message)
 	require.NoError(t, err)
 
@@ -270,7 +268,7 @@ func buildPulsarMalformedData(t *testing.T, message application.Message, accessK
 	return payload
 }
 
-func buildPulsarMalformedPayload(t *testing.T, message application.Message, accessKey string) []byte {
+func buildPulsarMalformedPayload(t *testing.T, message *application.Message, accessKey string) []byte {
 	data, err := json.Marshal(message)
 	require.NoError(t, err)
 

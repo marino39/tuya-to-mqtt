@@ -9,6 +9,13 @@ services:
     ports:
       - 1883:1883
       - 9001:9001
+  cache:
+    image: redis:6.2-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - cache:/data
   n8n:
     image: n8nio/n8n:latest
     volumes:
@@ -19,4 +26,5 @@ services:
 
 volumes:
   data: ~
+  cache: ~
   n8n_storage: ~

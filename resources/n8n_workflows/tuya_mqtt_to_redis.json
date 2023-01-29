@@ -1,0 +1,105 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "topics": "topic/test/tuya/#",
+        "options": {
+          "jsonParseBody": false,
+          "onlyMessage": false
+        }
+      },
+      "id": "1d60bd43-7d30-4978-8908-684eb737cfcf",
+      "name": "MQTT Trigger",
+      "type": "n8n-nodes-base.mqttTrigger",
+      "typeVersion": 1,
+      "position": [
+        300,
+        340
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "mqtt": {
+          "id": "1",
+          "name": "MQTT account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{$json.topic}}",
+        "value": "={{ $json.message }}",
+        "keyType": "string"
+      },
+      "id": "af03f28f-fad2-4ae9-b475-1c639622ff95",
+      "name": "Redis",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        800,
+        180
+      ],
+      "credentials": {
+        "redis": {
+          "id": "3",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json[\"topic\"] }}",
+              "operation": "notContains",
+              "value2": "/all"
+            }
+          ]
+        }
+      },
+      "id": "fd556969-7022-4c9a-a597-ebc5d525f360",
+      "name": "IF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        540,
+        340
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "MQTT Trigger": {
+      "main": [
+        [
+          {
+            "node": "IF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF": {
+      "main": [
+        [
+          {
+            "node": "Redis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "851d5a36-ff56-45d2-9d2e-2f7a43143b99",
+  "id": "1",
+  "meta": {
+    "instanceId": "bfc3a5d8f000de0b1f93a6ef1925ceee63e439a9211bb2d24edb2d891866fb49"
+  },
+  "tags": []
+}

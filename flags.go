@@ -87,5 +87,10 @@ var FlagPublishN = &cli.IntFlag{
 
 var FlagPublishJSON = &cli.StringSliceFlag{
 	Name:     "json",
-	Required: true,
+	Required: false,
+}
+
+var FlagPublishText = &cli.StringSliceFlag{
+	Name:     "text",
+	Required: false,
 }

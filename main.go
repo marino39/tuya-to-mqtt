@@ -149,6 +149,7 @@ func main() {
 				Name: "publish",
 				Flags: []cli.Flag{
 					FlagPublishJSON,
+					FlagPublishText,
 				},
 				Action: func(ctx *cli.Context) error {
 					mqttClient := adapters.NewMQTTClient(adapters.MQTTClientParams{
@@ -187,6 +188,13 @@ func main() {
 							if err != nil {
 								return err
 							}
+						}
+					}
+
+					for _, payload := range ctx.StringSlice(FlagPublishText.Name) {
+						err = mqttClient.Publish(topicPrefix, 2, false, []byte(payload))
+						if err != nil {
+							return err
 						}
 					}
 

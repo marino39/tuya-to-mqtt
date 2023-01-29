@@ -54,14 +54,14 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 				return err
 			}
 
-			err = t.params.MQTTClient.Publish(BuildMQTTTopicForMessage(t.params.MQTTTopic, msg), 2, false, msgData)
+			err = t.params.MQTTClient.Publish(BuildMQTTTopicForMessage(t.params.MQTTTopic, msg), 2, true, msgData)
 			if err != nil {
 				return err
 			}
 			for _, status := range msg.Status {
 				topic := BuildMQTTTopicForStatus(t.params.MQTTTopic, msg, status)
 				value := strings.ReplaceAll(fmt.Sprintf("%#v", status.Value), "\"", "")
-				err = t.params.MQTTClient.Publish(topic, 2, false, []byte(value))
+				err = t.params.MQTTClient.Publish(topic, 2, true, []byte(value))
 				if err != nil {
 					return err
 				}

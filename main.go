@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -161,10 +163,30 @@ func main() {
 						return err
 					}
 
+					topicPrefix := ctx.String(FlagMQTTTopic.Name)
 					for _, payload := range ctx.StringSlice(FlagPublishJSON.Name) {
-						err = mqttClient.Publish(ctx.String(FlagMQTTTopic.Name), 2, false, payload)
+						var msg *application.Message
+						err = json.Unmarshal([]byte(payload), &msg)
 						if err != nil {
 							return err
+						}
+
+						msgData, err := json.Marshal(msg)
+						if err != nil {
+							return err
+						}
+
+						err = mqttClient.Publish(application.BuildMQTTTopicForMessage(topicPrefix, msg), 2, false, []byte(msgData))
+						if err != nil {
+							return err
+						}
+						for _, status := range msg.Status {
+							topic := application.BuildMQTTTopicForStatus(topicPrefix, msg, status)
+							value := strings.ReplaceAll(fmt.Sprintf("%#v", status.Value), "\"", "")
+							err = mqttClient.Publish(topic, 2, false, []byte(value))
+							if err != nil {
+								return err
+							}
 						}
 					}
 
@@ -187,7 +209,7 @@ func main() {
 					}
 
 					err = mqttClient.Subscribe(ctx.String(FlagMQTTTopic.Name), 2, func(msg application.MQTTMessage) {
-						fmt.Println(string(msg.Payload()))
+						fmt.Println(msg.Topic(), string(msg.Payload()))
 						msg.Ack()
 					})
 					if err != nil {

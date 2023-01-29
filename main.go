@@ -141,6 +141,7 @@ func main() {
 			logger.Info().Msg("service terminating...")
 			return nil
 		},
+		DisableSliceFlagSeparator: true,
 		Commands: []*cli.Command{
 			{
 				Name: "publish",
@@ -161,7 +162,7 @@ func main() {
 					}
 
 					for _, payload := range ctx.StringSlice(FlagPublishJSON.Name) {
-						err = mqttClient.Publish(ctx.String(FlagMQTTTopic.Name), 0, true, payload)
+						err = mqttClient.Publish(ctx.String(FlagMQTTTopic.Name), 2, false, payload)
 						if err != nil {
 							return err
 						}
@@ -185,7 +186,7 @@ func main() {
 						return err
 					}
 
-					err = mqttClient.Subscribe(ctx.String(FlagMQTTTopic.Name), 0, func(msg application.MQTTMessage) {
+					err = mqttClient.Subscribe(ctx.String(FlagMQTTTopic.Name), 2, func(msg application.MQTTMessage) {
 						fmt.Println(string(msg.Payload()))
 						msg.Ack()
 					})

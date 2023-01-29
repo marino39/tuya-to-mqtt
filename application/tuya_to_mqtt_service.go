@@ -52,13 +52,13 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			return t.params.MQTTClient.Publish(t.params.MQTTTopic, 0, true, msgData)
+			return t.params.MQTTClient.Publish(t.params.MQTTTopic, 2, false, msgData)
 		})
 	})
 
 	// mqtt publish reported
 	g.Go(func() error {
-		ticker := time.NewTicker(30 * time.Second)
+		ticker := time.NewTicker(60 * time.Second)
 		lastStatus := MQTTStatus{}
 
 	ReporterLoop:

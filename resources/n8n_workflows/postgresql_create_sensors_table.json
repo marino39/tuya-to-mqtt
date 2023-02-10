@@ -1,0 +1,59 @@
+{
+  "name": "postgresql-create-sensors-table",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "6b992a7f-d3b3-42dc-a27c-4b4fbb68290e",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        640,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS sensors (     company_name text,     product_id text,     device_id text,     property_name text,     property_value text,     PRIMARY KEY(company_name, product_id, device_id, property_name) );",
+        "additionalFields": {}
+      },
+      "id": "bb34dad8-7402-4136-8dfd-31b88a33197b",
+      "name": "Postgres",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        860,
+        340
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "4",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "09f545c6-992e-4980-bd25-813d596dbb06",
+  "id": "3",
+  "meta": {
+    "instanceId": "bfc3a5d8f000de0b1f93a6ef1925ceee63e439a9211bb2d24edb2d891866fb49"
+  },
+  "tags": []
+}

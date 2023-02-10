@@ -16,6 +16,12 @@ services:
       - '6379:6379'
     volumes:
       - cache:/data
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5433:5432"
   n8n:
     image: n8nio/n8n:latest
     volumes:
@@ -23,8 +29,16 @@ services:
     ports:
       - "5678:5678"
     restart: always
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+    volumes:
+      - grafana-data:/var/lib/grafana
 
 volumes:
   data: ~
   cache: ~
   n8n_storage: ~
+  grafana-data: ~

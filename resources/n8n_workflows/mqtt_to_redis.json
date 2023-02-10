@@ -1,5 +1,5 @@
 {
-  "name": "My workflow",
+  "name": "mqtt-to-redis",
   "nodes": [
     {
       "parameters": {
@@ -94,9 +94,9 @@
       ]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {},
-  "versionId": "851d5a36-ff56-45d2-9d2e-2f7a43143b99",
+  "versionId": "bf894aff-b262-4e6a-ab6c-4f0887334485",
   "id": "1",
   "meta": {
     "instanceId": "bfc3a5d8f000de0b1f93a6ef1925ceee63e439a9211bb2d24edb2d891866fb49"

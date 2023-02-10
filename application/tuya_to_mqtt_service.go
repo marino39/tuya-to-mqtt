@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/sourcegraph/conc/pool"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -43,29 +44,40 @@ func NewTuyaToMQTTService(params TuyaToMQTTServiceParams) (TuyaToMQTTService, er
 func (t tuyaToMQTTService) Run(ctx context.Context) error {
 	g := errgroup.Group{}
 
+	rCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	// tuya message handler
 	g.Go(func() error {
 		t.log.Info().Msgf("start publishing on topic: %s", t.params.MQTTTopic)
 		defer t.log.Info().Msg("stop publishing")
+		defer cancel()
 
-		return t.params.TuyaPulsarClient.Subscribe(ctx, func(ctx context.Context, msg *Message) error {
-			msgData, err := json.Marshal(msg)
-			if err != nil {
-				return err
-			}
+		task := pool.New().WithContext(rCtx).WithMaxGoroutines(10)
+		defer func() { _ = task.Wait() }()
 
-			err = t.params.MQTTClient.Publish(BuildMQTTTopicForMessage(t.params.MQTTTopic, msg), 2, true, msgData)
-			if err != nil {
-				return err
-			}
-			for _, status := range msg.Status {
-				topic := BuildMQTTTopicForStatus(t.params.MQTTTopic, msg, status)
-				value := strings.ReplaceAll(fmt.Sprintf("%#v", status.Value), "\"", "")
-				err = t.params.MQTTClient.Publish(topic, 2, true, []byte(value))
+		return t.params.TuyaPulsarClient.Subscribe(rCtx, func(ctx context.Context, msg *Message) error {
+			task.Go(func(ctx context.Context) error {
+				msgData, err := json.Marshal(msg)
 				if err != nil {
 					return err
 				}
-			}
+
+				err = t.params.MQTTClient.Publish(BuildMQTTTopicForMessage(t.params.MQTTTopic, msg), 2, true, msgData)
+				if err != nil {
+					return err
+				}
+
+				for _, status := range msg.Status {
+					topic := BuildMQTTTopicForStatus(t.params.MQTTTopic, msg, status)
+					value := strings.ReplaceAll(fmt.Sprintf("%#v", status.Value), "\"", "")
+					err = t.params.MQTTClient.Publish(topic, 2, true, []byte(value))
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			})
 			return nil
 		})
 	})
@@ -78,7 +90,7 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 	ReporterLoop:
 		for {
 			select {
-			case <-ctx.Done():
+			case <-rCtx.Done():
 				break ReporterLoop
 			case <-ticker.C:
 				newStatus := t.params.MQTTClient.Status()

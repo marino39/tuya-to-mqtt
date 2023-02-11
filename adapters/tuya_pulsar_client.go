@@ -8,7 +8,6 @@ import (
 	"strings"
 	"tuya-to-mqtt/application"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/rs/zerolog"
 	pulsar "github.com/tuya/tuya-pulsar-sdk-go"
 	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tylog"
@@ -50,8 +49,6 @@ func (h *messageHandler) HandlePayload(ctx context.Context, _ *pulsar.Message, p
 		return err
 	}
 	decode := tyutils.EcbDecrypt(de, []byte(h.aesSecret))
-
-	spew.Dump(m)
 
 	// build message
 	var appMsg application.Message

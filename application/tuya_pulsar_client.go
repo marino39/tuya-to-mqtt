@@ -11,8 +11,8 @@ type Status struct {
 type MessageType int
 
 const (
-	MessageTypeStatus     = 4
-	MessageTypeNameModify = 20
+	MessageTypeStatus          = 4
+	MessageTypeDeviceManagment = 20
 )
 
 type Message struct {

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/sourcegraph/conc/pool"
 	"golang.org/x/sync/errgroup"
 )
@@ -60,26 +59,11 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 			task.Go(func(ctx context.Context) error {
 				switch msg.Type {
 				case MessageTypeStatus:
-					for _, status := range msg.Status {
-						topic := BuildMQTTTopicForStatus(t.params.MQTTTopic, msg, status)
-						value := strings.ReplaceAll(fmt.Sprintf("%#v", status.Value), "\"", "")
-						err := t.params.MQTTClient.Publish(topic, 2, true, []byte(value))
-						if err != nil {
-							return err
-						}
-					}
-				case MessageTypeNameModify:
-					if msg.BizData != nil && msg.BizData["name"] != nil {
-						if value, ok := msg.BizData["name"].(string); ok {
-							topic := BuildMQTTTopicForNameChange(t.params.MQTTTopic, msg)
-							err := t.params.MQTTClient.Publish(topic, 2, true, []byte(value))
-							if err != nil {
-								return err
-							}
-						}
-					}
+					return t.handleMessageStatus(msg)
+				case MessageTypeDeviceManagment:
+					return t.handleMessageDeviceManagement(msg)
 				default:
-					log.Warn().Fields(map[string]any{"msg": msg}).Msg("Unknown message")
+					t.log.Warn().Fields(map[string]any{"msg": msg}).Msg("unknown message")
 				}
 				return nil
 			})
@@ -123,6 +107,36 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 	})
 
 	return g.Wait()
+}
+
+func (t tuyaToMQTTService) handleMessageStatus(msg *Message) error {
+	for _, status := range msg.Status {
+		topic := BuildMQTTTopicForStatus(t.params.MQTTTopic, msg, status)
+		value := strings.ReplaceAll(fmt.Sprintf("%#v", status.Value), "\"", "")
+		err := t.params.MQTTClient.Publish(topic, 2, true, []byte(value))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t tuyaToMQTTService) handleMessageDeviceManagement(msg *Message) error {
+	switch msg.BizCode {
+	case "nameUpdate":
+		if msg.BizData != nil && msg.BizData["name"] != nil {
+			if value, ok := msg.BizData["name"].(string); ok {
+				topic := BuildMQTTTopicForNameChange(t.params.MQTTTopic, msg)
+				err := t.params.MQTTClient.Publish(topic, 2, true, []byte(value))
+				if err != nil {
+					return err
+				}
+			}
+		}
+	default:
+		t.log.Warn().Fields(map[string]any{"msg": msg}).Msg("unknown message")
+	}
+	return nil
 }
 
 func BuildMQTTTopicForStatus(prefix string, msg *Message, status Status) string {

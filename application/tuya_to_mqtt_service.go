@@ -126,12 +126,18 @@ func (t tuyaToMQTTService) handleMessageDeviceManagement(msg *Message) error {
 	case "nameUpdate":
 		if msg.BizData != nil && msg.BizData["name"] != nil {
 			if value, ok := msg.BizData["name"].(string); ok {
-				topic := BuildMQTTTopicForNameChange(t.params.MQTTTopic, msg)
+				topic := BuildMQTTTopicForProperty(t.params.MQTTTopic, msg, "name")
 				err := t.params.MQTTClient.Publish(topic, 2, true, []byte(value))
 				if err != nil {
 					return err
 				}
 			}
+		}
+	case "online", "offline":
+		topic := BuildMQTTTopicForProperty(t.params.MQTTTopic, msg, "network")
+		err := t.params.MQTTClient.Publish(topic, 2, true, []byte(msg.BizCode))
+		if err != nil {
+			return err
 		}
 	default:
 		t.log.Warn().Fields(map[string]any{"msg": msg}).Msg("unknown message")
@@ -143,6 +149,6 @@ func BuildMQTTTopicForStatus(prefix string, msg *Message, status Status) string 
 	return fmt.Sprintf("%s/tuya/%s/%s/status/%s", prefix, msg.ProductKey, msg.DevID, status.Code)
 }
 
-func BuildMQTTTopicForNameChange(prefix string, msg *Message) string {
-	return fmt.Sprintf("%s/tuya/%s/%s/status/name", prefix, msg.ProductKey, msg.DevID)
+func BuildMQTTTopicForProperty(prefix string, msg *Message, propertyName string) string {
+	return fmt.Sprintf("%s/tuya/%s/%s/status/%d", prefix, msg.ProductKey, msg.DevID, propertyName)
 }

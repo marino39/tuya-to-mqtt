@@ -172,15 +172,6 @@ func main() {
 							return err
 						}
 
-						msgData, err := json.Marshal(msg)
-						if err != nil {
-							return err
-						}
-
-						err = mqttClient.Publish(application.BuildMQTTTopicForMessage(topicPrefix, msg), 2, false, []byte(msgData))
-						if err != nil {
-							return err
-						}
 						for _, status := range msg.Status {
 							topic := application.BuildMQTTTopicForStatus(topicPrefix, msg, status)
 							value := strings.ReplaceAll(fmt.Sprintf("%#v", status.Value), "\"", "")

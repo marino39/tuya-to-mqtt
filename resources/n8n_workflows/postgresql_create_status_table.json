@@ -1,5 +1,5 @@
 {
-  "name": "postgresql-create-sensors-table",
+  "name": "postgresql-create-status-table",
   "nodes": [
     {
       "parameters": {},
@@ -15,7 +15,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "CREATE TABLE IF NOT EXISTS sensors (     company_name text,     product_id text,     device_id text,     property_name text,     property_value text,     PRIMARY KEY(company_name, product_id, device_id, property_name) );",
+        "query": "=CREATE TABLE IF NOT EXISTS status (     company_name text,     product_id text,     device_id text, ts timestamp default now(),    property_name text,     property_value text,     PRIMARY KEY(company_name, product_id, device_id, property_name) );",
         "additionalFields": {}
       },
       "id": "bb34dad8-7402-4136-8dfd-31b88a33197b",
@@ -50,7 +50,7 @@
   },
   "active": false,
   "settings": {},
-  "versionId": "09f545c6-992e-4980-bd25-813d596dbb06",
+  "versionId": "f0a46f9e-5004-442e-a25a-e0f1a80ab774",
   "id": "3",
   "meta": {
     "instanceId": "bfc3a5d8f000de0b1f93a6ef1925ceee63e439a9211bb2d24edb2d891866fb49"

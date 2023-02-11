@@ -2,12 +2,12 @@ package application
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/sourcegraph/conc/pool"
 	"golang.org/x/sync/errgroup"
 )
@@ -58,23 +58,28 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 
 		return t.params.TuyaPulsarClient.Subscribe(rCtx, func(ctx context.Context, msg *Message) error {
 			task.Go(func(ctx context.Context) error {
-				msgData, err := json.Marshal(msg)
-				if err != nil {
-					return err
-				}
-
-				err = t.params.MQTTClient.Publish(BuildMQTTTopicForMessage(t.params.MQTTTopic, msg), 2, true, msgData)
-				if err != nil {
-					return err
-				}
-
-				for _, status := range msg.Status {
-					topic := BuildMQTTTopicForStatus(t.params.MQTTTopic, msg, status)
-					value := strings.ReplaceAll(fmt.Sprintf("%#v", status.Value), "\"", "")
-					err = t.params.MQTTClient.Publish(topic, 2, true, []byte(value))
-					if err != nil {
-						return err
+				switch msg.Type {
+				case MessageTypeStatus:
+					for _, status := range msg.Status {
+						topic := BuildMQTTTopicForStatus(t.params.MQTTTopic, msg, status)
+						value := strings.ReplaceAll(fmt.Sprintf("%#v", status.Value), "\"", "")
+						err := t.params.MQTTClient.Publish(topic, 2, true, []byte(value))
+						if err != nil {
+							return err
+						}
 					}
+				case MessageTypeNameModify:
+					if msg.BizData != nil && msg.BizData["name"] != nil {
+						if value, ok := msg.BizData["name"].(string); ok {
+							topic := BuildMQTTTopicForNameChange(t.params.MQTTTopic, msg)
+							err := t.params.MQTTClient.Publish(topic, 2, true, []byte(value))
+							if err != nil {
+								return err
+							}
+						}
+					}
+				default:
+					log.Warn().Fields(map[string]any{"msg": msg}).Msg("Unknown message")
 				}
 				return nil
 			})
@@ -120,10 +125,10 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 	return g.Wait()
 }
 
-func BuildMQTTTopicForMessage(prefix string, msg *Message) string {
-	return fmt.Sprintf("%s/tuya/%s/%s/all", prefix, msg.ProductKey, msg.DevID)
+func BuildMQTTTopicForStatus(prefix string, msg *Message, status Status) string {
+	return fmt.Sprintf("%s/tuya/%s/%s/status/%s", prefix, msg.ProductKey, msg.DevID, status.Code)
 }
 
-func BuildMQTTTopicForStatus(prefix string, msg *Message, status Status) string {
-	return fmt.Sprintf("%s/tuya/%s/%s/%s", prefix, msg.ProductKey, msg.DevID, status.Code)
+func BuildMQTTTopicForNameChange(prefix string, msg *Message) string {
+	return fmt.Sprintf("%s/tuya/%s/%s/status/name", prefix, msg.ProductKey, msg.DevID)
 }

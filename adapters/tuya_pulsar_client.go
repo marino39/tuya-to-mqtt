@@ -8,6 +8,7 @@ import (
 	"strings"
 	"tuya-to-mqtt/application"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/rs/zerolog"
 	pulsar "github.com/tuya/tuya-pulsar-sdk-go"
 	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tylog"
@@ -50,12 +51,18 @@ func (h *messageHandler) HandlePayload(ctx context.Context, _ *pulsar.Message, p
 	}
 	decode := tyutils.EcbDecrypt(de, []byte(h.aesSecret))
 
+	spew.Dump(m)
+
 	// build message
 	var appMsg application.Message
 	err = json.Unmarshal(decode, &appMsg)
 	if err != nil {
 		h.log.Warn().Msg("failed to parse message data")
 		return err
+	}
+
+	if msgType, ok := m["protocol"].(float64); ok {
+		appMsg.Type = application.MessageType(msgType)
 	}
 
 	return h.clientHandler(ctx, &appMsg)

@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "jsCode": "let items = $input.all();\n\nlet retItems = [];\nfor (let i = 0; i < items.length; i++) {\n  let topic = items[i].json.topic;\n  let topicValue = items[i].json.message;\n\n  let topicProps = topic.split(\"/\");\n  let topicPropsLength = topicProps.length;\n\n  retItems.push({\n      \"companyName\": topicProps[topicPropsLength-4],\n      \"productId\": topicProps[topicPropsLength-3],\n      \"deviceId\": topicProps[topicPropsLength-2],\n      \"propertyName\": topicProps[topicPropsLength-1],\n      \"propertyValue\": String(topicValue),\n  });\n}\n\nreturn retItems;"
+        "jsCode": "let items = $input.all();\n\nlet retItems = [];\nfor (let i = 0; i < items.length; i++) {\n  let topic = items[i].json.topic;\n  let topicValue = items[i].json.message;\n\n  let topicProps = topic.split(\"/\");\n  let topicPropsLength = topicProps.length;\n\n  retItems.push({\n      \"companyName\": topicProps[topicPropsLength-5],\n      \"productId\": topicProps[topicPropsLength-4],\n      \"deviceId\": topicProps[topicPropsLength-3],\n      \"propertyName\": topicProps[topicPropsLength-1],\n      \"propertyValue\": String(topicValue),\n  });\n}\n\nreturn retItems;"
       },
       "id": "59bed8c1-cff8-4231-a7b6-3af982d11ff3",
       "name": "Code",
@@ -17,7 +17,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO sensors (company_name, product_id, device_id, property_name, property_value) VALUES ('{{ $json.companyName }}', '{{ $json.productId }}', '{{ $json.deviceId }}', '{{ $json.propertyName }}', '{{ $json.propertyValue }}') ON CONFLICT (company_name, product_id, device_id, property_name) DO UPDATE SET property_value = EXCLUDED.property_value;",
+        "query": "=INSERT INTO status (company_name, product_id, device_id, property_name, property_value) VALUES ('{{ $json.companyName }}', '{{ $json.productId }}', '{{ $json.deviceId }}', '{{ $json.propertyName }}', '{{ $json.propertyValue }}') ON CONFLICT (company_name, product_id, device_id, property_name) DO UPDATE SET property_value = EXCLUDED.property_value;",
         "additionalFields": {}
       },
       "id": "2c9a1bbe-cd13-4112-a1f0-371b25612213",
@@ -37,7 +37,7 @@
     },
     {
       "parameters": {
-        "topics": "topic/test/tuya/#",
+        "topics": "topic/test/tuya/+/+/status/#",
         "options": {}
       },
       "id": "b841fd8d-fe9c-419c-9320-011f059e628b",
@@ -83,7 +83,7 @@
   },
   "active": true,
   "settings": {},
-  "versionId": "54eb9037-b067-4810-b4cb-6f5b4c263ef1",
+  "versionId": "f643fa15-220c-40ca-9f02-c8df2fc9b3da",
   "id": "2",
   "meta": {
     "instanceId": "bfc3a5d8f000de0b1f93a6ef1925ceee63e439a9211bb2d24edb2d891866fb49"

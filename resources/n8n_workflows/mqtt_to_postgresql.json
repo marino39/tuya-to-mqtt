@@ -17,7 +17,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO status (company_name, product_id, device_id, property_name, property_value) VALUES ('{{ $json.companyName }}', '{{ $json.productId }}', '{{ $json.deviceId }}', '{{ $json.propertyName }}', '{{ $json.propertyValue }}') ON CONFLICT (company_name, product_id, device_id, property_name) DO UPDATE SET property_value = EXCLUDED.property_value;",
+        "query": "=INSERT INTO status (company_name, product_id, device_id, ts, property_name, property_value) VALUES ('{{ $json.companyName }}', '{{ $json.productId }}', '{{ $json.deviceId }}', now(), '{{ $json.propertyName }}', '{{ $json.propertyValue }}');",
         "additionalFields": {}
       },
       "id": "2c9a1bbe-cd13-4112-a1f0-371b25612213",
@@ -83,7 +83,7 @@
   },
   "active": true,
   "settings": {},
-  "versionId": "f643fa15-220c-40ca-9f02-c8df2fc9b3da",
+  "versionId": "e467a5f4-89af-4588-bcd2-f53421bf060f",
   "id": "2",
   "meta": {
     "instanceId": "bfc3a5d8f000de0b1f93a6ef1925ceee63e439a9211bb2d24edb2d891866fb49"

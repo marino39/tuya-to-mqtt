@@ -46,6 +46,12 @@ var FlagTuyaPulsarEnv = &cli.StringFlag{
 	Required: false,
 }
 
+var FlagTuyaUser = &cli.StringFlag{
+	Name:     "tuya-user",
+	EnvVars:  []string{"TUYA_USER"},
+	Required: true,
+}
+
 var FlagMQTTUrl = &cli.StringFlag{
 	Name:     "mqtt-url",
 	Usage:    "tcp://broker:port",

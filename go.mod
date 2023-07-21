@@ -3,10 +3,12 @@ module tuya-to-mqtt
 go 1.19
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/eclipse/paho.mqtt.golang v1.4.2
 	github.com/rs/zerolog v1.29.0
 	github.com/sourcegraph/conc v0.2.0
 	github.com/stretchr/testify v1.8.1
+	github.com/tuya/tuya-connector-go v1.0.5
 	github.com/tuya/tuya-pulsar-sdk-go v0.0.0-20210227092631-9e6865996fc0
 	github.com/urfave/cli/v2 v2.24.1
 	go.uber.org/zap v1.23.0
@@ -18,7 +20,6 @@ require (
 	github.com/cockroachdb/logtags v0.0.0-20211118104740-dabe8e521a4f // indirect
 	github.com/cockroachdb/redact v1.1.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/getsentry/sentry-go v0.13.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -32,10 +33,11 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.4.2 // indirect
 	github.com/sourcegraph/sourcegraph/lib v0.0.0-20221216004406-749998a2ac74 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
-	github.com/tuya/pulsar-client-go v0.0.0-20201117084529-d7dfa0597559 // indirect
+	github.com/tuya/pulsar-client-go v0.0.0-20210318030624-2c99a816287b // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect

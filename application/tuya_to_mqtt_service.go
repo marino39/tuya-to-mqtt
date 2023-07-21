@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -16,7 +17,9 @@ type TuyaToMQTTService interface {
 }
 
 type TuyaToMQTTServiceParams struct {
+	TuyaClient       TuyaClient
 	TuyaPulsarClient TuyaPulsarClient
+	TuyaUser         string
 	MQTTClient       MQTTClient
 
 	MQTTTopic string
@@ -46,6 +49,9 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 	rCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	initWaitGroup := sync.WaitGroup{}
+	initWaitGroup.Add(1)
+
 	// tuya message handler
 	g.Go(func() error {
 		t.log.Info().Msgf("start publishing on topic: %s", t.params.MQTTTopic)
@@ -57,6 +63,8 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 
 		return t.params.TuyaPulsarClient.Subscribe(rCtx, func(ctx context.Context, msg *Message) error {
 			task.Go(func(ctx context.Context) error {
+				initWaitGroup.Wait()
+
 				switch msg.Type {
 				case MessageTypeStatus:
 					return t.handleMessageStatus(msg)
@@ -106,6 +114,33 @@ func (t tuyaToMQTTService) Run(ctx context.Context) error {
 		return nil
 	})
 
+	// get current device status
+	devices, err := t.params.TuyaClient.UserDevices(ctx, t.params.TuyaUser)
+	if err != nil {
+		return err
+	}
+
+	for _, device := range devices {
+		var statusList []Status
+		statusList, err = t.params.TuyaClient.DeviceStatus(ctx, device.ID)
+		if err != nil {
+			return err
+		}
+
+		for _, status := range statusList {
+			topic := BuildMQTTTopicForStatusRaw(
+				t.params.MQTTTopic, "tuya", device.ProductID, device.ID, status.Code,
+			)
+			value := strings.ReplaceAll(fmt.Sprintf("%#v", status.Value), "\"", "")
+			err = t.params.MQTTClient.Publish(topic, 2, true, []byte(value))
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	initWaitGroup.Done()
+
 	return g.Wait()
 }
 
@@ -151,4 +186,8 @@ func BuildMQTTTopicForStatus(prefix string, msg *Message, status Status) string 
 
 func BuildMQTTTopicForStatusProperty(prefix string, msg *Message, propertyName string) string {
 	return fmt.Sprintf("%s/tuya/%s/%s/status/%s", prefix, msg.ProductKey, msg.DevID, propertyName)
+}
+
+func BuildMQTTTopicForStatusRaw(prefix, company, product, device, propertyName string) string {
+	return fmt.Sprintf("%s/%s/%s/%s/status/%s", prefix, company, product, device, propertyName)
 }

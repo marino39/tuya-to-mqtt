@@ -15,6 +15,9 @@ import (
 	"tuya-to-mqtt/application"
 
 	"github.com/rs/zerolog"
+	"github.com/tuya/tuya-connector-go/connector"
+	"github.com/tuya/tuya-connector-go/connector/env"
+	"github.com/tuya/tuya-connector-go/connector/httplib"
 	pulsar "github.com/tuya/tuya-pulsar-sdk-go"
 	"github.com/urfave/cli/v2"
 )
@@ -32,6 +35,7 @@ func main() {
 			FlagTuyaAccessKey,
 			FlagTuyaPulsarRegion,
 			FlagTuyaPulsarEnv,
+			FlagTuyaUser,
 			FlagMQTTUrl,
 			FlagMQTTClientID,
 			FlagMQTTUsername,
@@ -91,13 +95,17 @@ func main() {
 				return err
 			}
 
+			var tuyaAddress string
 			var pulsarAddress string
 			switch ctx.String(FlagTuyaPulsarRegion.Name) {
 			case "US":
+				tuyaAddress = httplib.URL_US
 				pulsarAddress = pulsar.PulsarAddrUS
 			case "EU":
+				tuyaAddress = httplib.URL_EU
 				pulsarAddress = pulsar.PulsarAddrEU
 			case "CN":
+				tuyaAddress = httplib.URL_CN
 				pulsarAddress = pulsar.PulsarAddrCN
 			default:
 				return fmt.Errorf("invalid tuya pulsar region")
@@ -107,6 +115,17 @@ func main() {
 			if ctx.String(FlagTuyaPulsarEnv.Name) == "TEST" {
 				pulsarEnv = adapters.PulsarEnvironmentTest
 			}
+
+			logger.Info().Msgf("tuya client endpoint: %s env: %s", tuyaAddress, ctx.String(FlagTuyaPulsarEnv.Name))
+			connector.InitWithOptions(
+				env.WithApiHost(tuyaAddress),
+				env.WithMsgHost(pulsarAddress),
+				env.WithAccessID(ctx.String(FlagTuyaAccessID.Name)),
+				env.WithAccessKey(ctx.String(FlagTuyaAccessKey.Name)),
+				env.WithAppName("tuya-to-mqtt"),
+			)
+
+			tuyaClient := adapters.NewTuyaClient()
 
 			logger.Info().Msgf("pulsar endpoint: %s env: %s", pulsarAddress, ctx.String(FlagTuyaPulsarEnv.Name))
 			pulsarClient := pulsar.NewClient(pulsar.ClientConfig{
@@ -125,7 +144,9 @@ func main() {
 			}
 
 			tuyaToMQTTService, err := application.NewTuyaToMQTTService(application.TuyaToMQTTServiceParams{
+				TuyaClient:       tuyaClient,
 				TuyaPulsarClient: tuyaPulsarClient,
+				TuyaUser:         ctx.String(FlagTuyaUser.Name),
 				MQTTClient:       mqttClient,
 				MQTTTopic:        ctx.String(FlagMQTTTopic.Name),
 				Log:              logger.With().Str("module", "tuya_to_mqtt_service").Logger(),

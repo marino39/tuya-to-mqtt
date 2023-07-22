@@ -7,7 +7,7 @@
 ### Topic Structure
 
 #### Template: 
-```/$prefix/$company_name/$product_id/$device_id/$property_name```
+```/$prefix/$company_name/$product_id/$device_id/status/$property_name```
 
 Parameters:
 - prefix: the mqtt topic set as program param
@@ -18,7 +18,7 @@ Parameters:
 
 #### Example 1: The property by property publish
 
-Topic: ```/topic/smarthome/devices/tuya/dmi4usmu/vdevo167493813773312/va_temperature```
+Topic: ```/topic/smarthome/devices/tuya/dmi4usmu/vdevo167493813773312/status/va_temperature```
 
 Parameters:
 - prefix: topic/smarthome/devices
@@ -32,7 +32,7 @@ Value:
 
 #### Example 2: The multi-property publish(toya-mqtt pass-through)
 
-Topic: ```/topic/smarthome/devices/tuya/dmi4usmu/vdevo167493813773312/all```
+Topic: ```/topic/smarthome/devices/tuya/dmi4usmu/vdevo167493813773312/status/all```
 
 Parameters:
 - prefix: topic/smarthome/devices
@@ -77,7 +77,7 @@ Value:
 
 Command:
 ```bash
-/private/var/folders/61/lcnvk13d60lb3795dn4cdjk80000gn/T/GoLand/___go_build_tuya_to_mqtt_subscribe --tuya-access-id=*** --tuya-access-key=*** --mqtt-url=tcp://localhost:1883 --mqtt-client-id=test --mqtt-username=*** --mqtt-password=*** --mqtt-topic=topic/test/# subscribe
+tuya_to_mqtt --tuya-user=*** --tuya-access-id=*** --tuya-access-key=*** --mqtt-url=tcp://localhost:1883 --mqtt-client-id=test --mqtt-username=*** --mqtt-password=*** --mqtt-topic=topic/test/# subscribe
 ```
 
 Output:
@@ -92,5 +92,5 @@ topic/test/tuya/dmi4usmu/vdevo167493813773312/status/battery_percentage 42
 
 Command:
 ```bash
-/private/var/folders/61/lcnvk13d60lb3795dn4cdjk80000gn/T/GoLand/___go_build_tuya_to_mqtt_publish --tuya-access-id=*** --tuya-access-key=*** --mqtt-url=tcp://localhost:1883 --mqtt-client-id=test2 --mqtt-username=*** --mqtt-password=*** --mqtt-topic=topic/test/tuya/dmi4usmu/vdevo167493813773312/status publish --json={"dataId":"371ac9f3-9f61-11ed-abd9-1a4883ee6e3b","devId":"vdevo167493813773312","productKey":"dmi4usmu","status":[{"code":"va_temperature","t":1674947540350,"value":1718},{"code":"va_humidity","t":1674947540350,"value":20},{"code":"battery_state","t":1674947540350,"value":"high"},{"code":"battery_percentage","t":1674947540350,"value":42}]}
+tuya_to_mqtt --tuya-user=*** --tuya-access-id=*** --tuya-access-key=*** --mqtt-url=tcp://localhost:1883 --mqtt-client-id=test2 --mqtt-username=*** --mqtt-password=*** --mqtt-topic=topic/test/tuya/dmi4usmu/vdevo167493813773312/status publish --json={"dataId":"371ac9f3-9f61-11ed-abd9-1a4883ee6e3b","devId":"vdevo167493813773312","productKey":"dmi4usmu","status":[{"code":"va_temperature","t":1674947540350,"value":1718},{"code":"va_humidity","t":1674947540350,"value":20},{"code":"battery_state","t":1674947540350,"value":"high"},{"code":"battery_percentage","t":1674947540350,"value":42}]}
 ```

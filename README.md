@@ -77,7 +77,7 @@ Value:
 
 Command:
 ```bash
-tuya_to_mqtt --tuya-user=*** --tuya-access-id=*** --tuya-access-key=*** --mqtt-url=tcp://localhost:1883 --mqtt-client-id=test --mqtt-username=*** --mqtt-password=*** --mqtt-topic=topic/test/# subscribe
+tuya_to_mqtt subscribe --mqtt-url=tcp://localhost:1883 --mqtt-client-id=test --mqtt-username=*** --mqtt-password=*** --mqtt-topic=topic/test/#
 ```
 
 Output:
@@ -92,5 +92,10 @@ topic/test/tuya/dmi4usmu/vdevo167493813773312/status/battery_percentage 42
 
 Command:
 ```bash
-tuya_to_mqtt --tuya-user=*** --tuya-access-id=*** --tuya-access-key=*** --mqtt-url=tcp://localhost:1883 --mqtt-client-id=test2 --mqtt-username=*** --mqtt-password=*** --mqtt-topic=topic/test/tuya/dmi4usmu/vdevo167493813773312/status publish --json={"dataId":"371ac9f3-9f61-11ed-abd9-1a4883ee6e3b","devId":"vdevo167493813773312","productKey":"dmi4usmu","status":[{"code":"va_temperature","t":1674947540350,"value":1718},{"code":"va_humidity","t":1674947540350,"value":20},{"code":"battery_state","t":1674947540350,"value":"high"},{"code":"battery_percentage","t":1674947540350,"value":42}]}
+tuya_to_mqtt publish --mqtt-url=tcp://localhost:1883 --mqtt-client-id=test2 --mqtt-username=*** --mqtt-password=*** --mqtt-topic=topic/test/tuya/dmi4usmu/vdevo167493813773312/status/all --json={"dataId":"371ac9f3-9f61-11ed-abd9-1a4883ee6e3b","devId":"vdevo167493813773312","productKey":"dmi4usmu","status":[{"code":"va_temperature","t":1674947540350,"value":1718},{"code":"va_humidity","t":1674947540350,"value":20},{"code":"battery_state","t":1674947540350,"value":"high"},{"code":"battery_percentage","t":1674947540350,"value":42}]}
+```
+
+Command:
+```bash
+tuya_to_mqtt publish --mqtt-url=tcp://localhost:1883 --mqtt-client-id=test2 --mqtt-username=*** --mqtt-password=*** --mqtt-topic=topic/test/tuya/dmi4usmu/vdevo167493813773312/status/va_temperature --text=24
 ```

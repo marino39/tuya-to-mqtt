@@ -90,11 +90,6 @@ func main() {
 				Log:      logger.With().Str("module", "mqtt-client").Logger(),
 			})
 
-			err := mqttClient.Connect()
-			if err != nil {
-				return err
-			}
-
 			var tuyaAddress string
 			var pulsarAddress string
 			switch ctx.String(FlagTuyaPulsarRegion.Name) {
@@ -223,15 +218,22 @@ func main() {
 						MQTTUrl:  ctx.String(FlagMQTTUrl.Name),
 					})
 
-					err := mqttClient.Connect()
+					mqttUpdateHandler := func(msg application.MQTTMessage) {
+						fmt.Println(msg.Topic(), string(msg.Payload()))
+						msg.Ack()
+					}
+
+					err := mqttClient.AddRoute(ctx.String(FlagMQTTTopic.Name), mqttUpdateHandler)
 					if err != nil {
 						return err
 					}
 
-					err = mqttClient.Subscribe(ctx.String(FlagMQTTTopic.Name), 2, func(msg application.MQTTMessage) {
-						fmt.Println(msg.Topic(), string(msg.Payload()))
-						msg.Ack()
-					})
+					err = mqttClient.Connect()
+					if err != nil {
+						return err
+					}
+
+					err = mqttClient.Subscribe(ctx.String(FlagMQTTTopic.Name), 2, mqttUpdateHandler)
 					if err != nil {
 						return err
 					}

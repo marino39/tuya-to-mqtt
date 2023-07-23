@@ -11,8 +11,15 @@ import (
 	"github.com/rs/zerolog"
 )
 
+const (
+	MQTTDefaultConnectTimeout = 30 * time.Second
+	MQTTDefaultPublishTimeout = 5 * time.Second
+)
+
 var (
-	ErrMQTTNotConnected = fmt.Errorf("not connected")
+	ErrMQTTNotConnected   = fmt.Errorf("not connected")
+	ErrMQTTConnectTimeout = fmt.Errorf("connect timeout")
+	ErrMQTTPublishTimeout = fmt.Errorf("publish timeout")
 )
 
 type MQTTClientParams struct {
@@ -21,9 +28,26 @@ type MQTTClientParams struct {
 	Password string
 	MQTTUrl  string
 
+	ConnectTimeout time.Duration
+	PublishTimeout time.Duration
+
 	NewClientFunc func(options *mqtt.ClientOptions) mqtt.Client
 
 	Log zerolog.Logger
+}
+
+func (m *MQTTClientParams) EnsureDefaults() {
+	if m.ConnectTimeout == 0 {
+		m.ConnectTimeout = MQTTDefaultConnectTimeout
+	}
+
+	if m.PublishTimeout == 0 {
+		m.PublishTimeout = MQTTDefaultPublishTimeout
+	}
+
+	if m.NewClientFunc == nil {
+		m.NewClientFunc = mqtt.NewClient
+	}
 }
 
 type MQTTClient struct {
@@ -41,43 +65,32 @@ type MQTTClient struct {
 }
 
 func NewMQTTClient(params MQTTClientParams) *MQTTClient {
-	m := &MQTTClient{
-		params: params,
-		log:    params.Log,
-	}
+	params.EnsureDefaults()
+
+	m := &MQTTClient{params: params, log: params.Log}
+	m.client = m.newMqttClient()
 
 	t := time.Unix(0, 0)
 	m.msgCountUpdateTime.Store(&t)
+
 	return m
 }
 
 func (m *MQTTClient) Connect() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if atomic.LoadUint64(&m.connected) == 1 {
 		return nil
 	}
 
-	opts := mqtt.NewClientOptions()
+	tc := time.NewTimer(m.params.ConnectTimeout)
 
-	opts.AddBroker(m.params.MQTTUrl)
-	opts.SetClientID(m.params.ClientID)
-	opts.SetUsername(m.params.Username)
-	opts.SetPassword(m.params.Password)
-
-	opts.SetDefaultPublishHandler(m.PublishHandler)
-	opts.OnConnect = m.OnConnect
-	opts.OnConnectionLost = m.OnConnectionLost
-
-	if m.params.NewClientFunc == nil {
-		m.client = mqtt.NewClient(opts)
-	} else {
-		m.client = m.params.NewClientFunc(opts)
-	}
-
-	if token := m.client.Connect(); token.Wait() && token.Error() != nil {
-		return token.Error()
+	token := m.client.Connect()
+	select {
+	case <-tc.C:
+		return ErrMQTTConnectTimeout
+	case <-token.Done():
+		if token.Error() != nil {
+			return token.Error()
+		}
 	}
 
 	atomic.StoreUint64(&m.connected, 1)
@@ -104,8 +117,16 @@ func (m *MQTTClient) Publish(topic string, qos byte, retained bool, msg any) err
 		return ErrMQTTNotConnected
 	}
 
-	if token := m.client.Publish(topic, qos, retained, msg); token.Wait() && token.Error() != nil {
-		return token.Error()
+	tc := time.NewTimer(m.params.PublishTimeout)
+
+	token := m.client.Publish(topic, qos, retained, msg)
+	select {
+	case <-tc.C:
+		return ErrMQTTPublishTimeout
+	case <-token.Done():
+		if token.Error() != nil {
+			return token.Error()
+		}
 	}
 
 	t := time.Now()
@@ -125,9 +146,15 @@ func (m *MQTTClient) Subscribe(topic string, qos byte, handler func(msg applicat
 	return nil
 }
 
+func (m *MQTTClient) AddRoute(topic string, handler func(msg application.MQTTMessage)) error {
+	m.client.AddRoute(topic, func(client mqtt.Client, msg mqtt.Message) {
+		handler(msg)
+	})
+	return nil
+}
+
 func (m *MQTTClient) PublishHandler(client mqtt.Client, msg mqtt.Message) {
 	// do nothing
-	fmt.Printf("publish handler\n")
 }
 
 func (m *MQTTClient) OnConnect(client mqtt.Client) {
@@ -138,6 +165,21 @@ func (m *MQTTClient) OnConnect(client mqtt.Client) {
 func (m *MQTTClient) OnConnectionLost(client mqtt.Client, err error) {
 	m.log.Info().Msgf("connect lost: %v", err)
 	atomic.StoreUint64(&m.connected, 0)
+}
+
+func (m *MQTTClient) newMqttClient() mqtt.Client {
+	opts := mqtt.NewClientOptions()
+
+	opts.AddBroker(m.params.MQTTUrl)
+	opts.SetClientID(m.params.ClientID)
+	opts.SetUsername(m.params.Username)
+	opts.SetPassword(m.params.Password)
+
+	opts.SetDefaultPublishHandler(m.PublishHandler)
+	opts.OnConnect = m.OnConnect
+	opts.OnConnectionLost = m.OnConnectionLost
+
+	return m.params.NewClientFunc(opts)
 }
 
 var _ application.MQTTClient = &MQTTClient{}

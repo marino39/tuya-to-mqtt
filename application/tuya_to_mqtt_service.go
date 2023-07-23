@@ -12,6 +12,12 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var (
+	ErrTuyaPulsarClientNotDefined = fmt.Errorf("tuya pulsar client not defined")
+	ErrMQTTClientNotDefined       = fmt.Errorf("mqtt client not defined")
+	ErrMQTTAlreadyConnected       = fmt.Errorf("mqtt already connected")
+)
+
 type TuyaToMQTTService interface {
 	Run(ctx context.Context) error
 }
@@ -38,10 +44,10 @@ type tuyaToMQTTService struct {
 
 func NewTuyaToMQTTService(params TuyaToMQTTServiceParams) (TuyaToMQTTService, error) {
 	if params.TuyaPulsarClient == nil {
-		return nil, fmt.Errorf("TuyaPulsarClient is nil")
+		return nil, ErrTuyaPulsarClientNotDefined
 	}
 	if params.MQTTClient == nil {
-		return nil, fmt.Errorf("MQTTClient is nil")
+		return nil, ErrMQTTClientNotDefined
 	}
 	return &tuyaToMQTTService{params: params, mqttCurrentState: make(map[string]string), log: params.Log}, nil
 }
@@ -55,14 +61,15 @@ func (t *tuyaToMQTTService) Run(ctx context.Context) error {
 	initWaitGroup := sync.WaitGroup{}
 	initWaitGroup.Add(1)
 
-	// tuya load mqtt current state
+	// mqtt init
+	err := t.mqttInit()
+	if err != nil {
+		return err
+	}
+
+	// mqtt state update handler(necessary if we want to update state from mqtt)
 	g.Go(func() error {
-		err := t.params.MQTTClient.Subscribe(fmt.Sprintf("%s/#", t.params.MQTTTopic), 2, func(msg MQTTMessage) {
-			t.mqttCurrentStateMutex.Lock()
-			t.mqttCurrentState[msg.Topic()] = string(msg.Payload())
-			t.mqttCurrentStateMutex.Unlock()
-			msg.Ack()
-		})
+		err := t.params.MQTTClient.Subscribe(fmt.Sprintf("%s/#", t.params.MQTTTopic), 2, t.mqttStateUpdateHandler)
 		if err != nil {
 			return err
 		}
@@ -152,7 +159,7 @@ func (t *tuyaToMQTTService) Run(ctx context.Context) error {
 			value := strings.ReplaceAll(fmt.Sprintf("%#v", status.Value), "\"", "")
 
 			// publish
-			err := t.handlePublish(topic, value)
+			err := t.mqttPublish(topic, value)
 			if err != nil {
 				return err
 			}
@@ -171,7 +178,7 @@ func (t *tuyaToMQTTService) handleMessageStatus(msg *Message) error {
 		value := strings.ReplaceAll(fmt.Sprintf("%#v", status.Value), "\"", "")
 
 		// publish
-		err := t.handlePublish(topic, value)
+		err := t.mqttPublish(topic, value)
 		if err != nil {
 			return err
 		}
@@ -188,7 +195,7 @@ func (t *tuyaToMQTTService) handleMessageDeviceManagement(msg *Message) error {
 				topic := BuildMQTTTopicForStatusProperty(t.params.MQTTTopic, msg, "name")
 
 				// publish
-				err := t.handlePublish(topic, value)
+				err := t.mqttPublish(topic, value)
 				if err != nil {
 					return err
 				}
@@ -200,7 +207,7 @@ func (t *tuyaToMQTTService) handleMessageDeviceManagement(msg *Message) error {
 		value := msg.BizCode
 
 		// publish
-		err := t.handlePublish(topic, value)
+		err := t.mqttPublish(topic, value)
 		if err != nil {
 			return err
 		}
@@ -210,7 +217,33 @@ func (t *tuyaToMQTTService) handleMessageDeviceManagement(msg *Message) error {
 	return nil
 }
 
-func (t *tuyaToMQTTService) handlePublish(topic, value string) error {
+func (t *tuyaToMQTTService) mqttInit() error {
+	if t.params.MQTTClient.IsConnected() {
+		return ErrMQTTAlreadyConnected
+	}
+
+	// define route for mqtt state update handler
+	err := t.params.MQTTClient.AddRoute(fmt.Sprintf("%s/#", t.params.MQTTTopic), t.mqttStateUpdateHandler)
+	if err != nil {
+		return err
+	}
+
+	// connect
+	err = t.params.MQTTClient.Connect()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *tuyaToMQTTService) mqttStateUpdateHandler(msg MQTTMessage) {
+	t.mqttCurrentStateMutex.Lock()
+	t.mqttCurrentState[msg.Topic()] = string(msg.Payload())
+	t.mqttCurrentStateMutex.Unlock()
+	msg.Ack()
+}
+
+func (t *tuyaToMQTTService) mqttPublish(topic, value string) error {
 	if value == "" {
 		return nil
 	}

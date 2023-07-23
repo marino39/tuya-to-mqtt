@@ -21,6 +21,7 @@ type MQTTMessage interface {
 type MQTTClient interface {
 	Publish(topic string, qos byte, retained bool, msg any) error
 	Subscribe(topic string, qos byte, handler func(msg MQTTMessage)) error
+	AddRoute(topic string, handler func(msg MQTTMessage)) error
 
 	Connect() error
 	IsConnected() bool

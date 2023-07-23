@@ -12,6 +12,11 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const (
+	DefaultMQTTInitTimeout = 30 * time.Second
+	MQTTInitNoMsgPeriod    = 1 * time.Second
+)
+
 var (
 	ErrTuyaPulsarClientNotDefined = fmt.Errorf("tuya pulsar client not defined")
 	ErrMQTTClientNotDefined       = fmt.Errorf("mqtt client not defined")
@@ -30,7 +35,15 @@ type TuyaToMQTTServiceParams struct {
 
 	MQTTTopic string
 
+	MQTTInitTimeout time.Duration
+
 	Log zerolog.Logger
+}
+
+func (t *TuyaToMQTTServiceParams) EnsureDefaults() {
+	if t.MQTTInitTimeout == 0 {
+		t.MQTTInitTimeout = DefaultMQTTInitTimeout
+	}
 }
 
 type tuyaToMQTTService struct {
@@ -43,6 +56,7 @@ type tuyaToMQTTService struct {
 }
 
 func NewTuyaToMQTTService(params TuyaToMQTTServiceParams) (TuyaToMQTTService, error) {
+	params.EnsureDefaults()
 	if params.TuyaPulsarClient == nil {
 		return nil, ErrTuyaPulsarClientNotDefined
 	}
@@ -222,8 +236,17 @@ func (t *tuyaToMQTTService) mqttInit() error {
 		return ErrMQTTAlreadyConnected
 	}
 
+	t.log.Info().Msg("mqtt init")
+
+	noMessageTimer := time.NewTimer(MQTTInitNoMsgPeriod)
+	initTimeoutTimer := time.NewTimer(t.params.MQTTInitTimeout)
+
 	// define route for mqtt state update handler
-	err := t.params.MQTTClient.AddRoute(fmt.Sprintf("%s/#", t.params.MQTTTopic), t.mqttStateUpdateHandler)
+	err := t.params.MQTTClient.AddRoute(fmt.Sprintf("%s/#", t.params.MQTTTopic), func(msg MQTTMessage) {
+		noMessageTimer.Reset(MQTTInitNoMsgPeriod)
+		t.mqttCurrentState[msg.Topic()] = string(msg.Payload())
+		msg.Ack()
+	})
 	if err != nil {
 		return err
 	}
@@ -233,6 +256,14 @@ func (t *tuyaToMQTTService) mqttInit() error {
 	if err != nil {
 		return err
 	}
+
+	select {
+	case <-noMessageTimer.C:
+		t.log.Info().Msg("mqtt init done")
+	case <-initTimeoutTimer.C:
+		t.log.Warn().Msg("mqtt init msg read timeout, continuing")
+	}
+
 	return nil
 }
 

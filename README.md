@@ -71,6 +71,13 @@ Value:
    ]
 }
 ```
+
+### Running
+
+```bash
+tuya_to_mqtt run --tuya-access-id=*** --tuya-access-key=*** --tuya-pulsar-region=EU --tuya-pulsar-env=PROD --tuya-user=*** --mqtt-url=tcp://localhost:1883 --mqtt-client-id=tuya-to-mqtt_1 --mqtt-username=*** --mqtt-password=*** --mqtt-topic=topic/test
+```
+
 ### Debugging
 
 #### Subscribe

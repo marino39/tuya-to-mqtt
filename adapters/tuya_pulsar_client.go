@@ -27,6 +27,11 @@ const (
 	PulsarEnvironmentTest                   = 1
 )
 
+var (
+	ErrPulsarClientNotProvided = fmt.Errorf("pulsar client is required")
+	ErrPulsarAccessKeyTooShort = fmt.Errorf("access key needs to be at least 24 characters long")
+)
+
 type messageHandler struct {
 	aesSecret     string
 	clientHandler func(ctx context.Context, msg *application.Message) error
@@ -86,11 +91,11 @@ type TuyaPulsarClient struct {
 
 func NewTuyaPulsarClient(params TuyaPulsarClientParams) (*TuyaPulsarClient, error) {
 	if params.PulsarClient == nil {
-		return nil, fmt.Errorf("pulsar client is required")
+		return nil, ErrPulsarClientNotProvided
 	}
 
 	if len(params.AccessKey) < 24 {
-		return nil, fmt.Errorf("access key needs to be at least 24 characters long")
+		return nil, ErrPulsarAccessKeyTooShort
 	}
 
 	topic := pulsar.TopicForAccessID(params.AccessID)

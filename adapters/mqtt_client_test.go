@@ -26,8 +26,11 @@ func TestMQTTClient_Connect(t *testing.T) {
 		},
 	})
 
+	doneChan := make(chan struct{})
+	close(doneChan)
+
 	mClient.On("Connect").Return(mToken).Once()
-	mToken.On("Wait").Return(true).Once()
+	mToken.On("Done").Return((<-chan struct{})(doneChan)).Once()
 	mToken.On("Error").Return(nil).Once()
 
 	err := mqttClient.Connect()
@@ -61,8 +64,11 @@ func TestMQTTClient_Connect_Error(t *testing.T) {
 		},
 	})
 
+	doneChan := make(chan struct{})
+	close(doneChan)
+
 	mClient.On("Connect").Return(mToken).Once()
-	mToken.On("Wait").Return(true).Once()
+	mToken.On("Done").Return((<-chan struct{})(doneChan)).Once()
 	mToken.On("Error").Return(fmt.Errorf("internal")).Twice()
 
 	err := mqttClient.Connect()
@@ -93,8 +99,11 @@ func TestMQTTClient_OnConnectionLost(t *testing.T) {
 		},
 	})
 
+	doneChan := make(chan struct{})
+	close(doneChan)
+
 	mClient.On("Connect").Return(mToken).Once()
-	mToken.On("Wait").Return(true).Once()
+	mToken.On("Done").Return((<-chan struct{})(doneChan)).Once()
 	mToken.On("Error").Return(nil).Once()
 
 	err := mqttClient.Connect()
@@ -133,10 +142,13 @@ func TestMQTTClient_Publish(t *testing.T) {
 		},
 	})
 
+	doneChan := make(chan struct{})
+	close(doneChan)
+
 	mClient.On("Connect").Run(func(args mock.Arguments) {
 		mqttClient.OnConnect(mClient)
 	}).Return(mToken).Once()
-	mToken.On("Wait").Return(true).Once()
+	mToken.On("Done").Return((<-chan struct{})(doneChan)).Once()
 	mToken.On("Error").Return(nil).Once()
 
 	err := mqttClient.Connect()
@@ -149,7 +161,7 @@ func TestMQTTClient_Publish(t *testing.T) {
 	payload := []byte("test_payload")
 
 	mClient.On("Publish", topic, qos, retained, payload).Return(mToken).Once()
-	mToken.On("Wait").Return(true).Once()
+	mToken.On("Done").Return((<-chan struct{})(doneChan)).Once()
 	mToken.On("Error").Return(nil).Once()
 
 	err = mqttClient.Publish(topic, qos, retained, payload)
@@ -212,10 +224,13 @@ func TestMQTTClient_Publish_Error(t *testing.T) {
 		},
 	})
 
+	doneChan := make(chan struct{})
+	close(doneChan)
+
 	mClient.On("Connect").Run(func(args mock.Arguments) {
 		mqttClient.OnConnect(mClient)
 	}).Return(mToken).Once()
-	mToken.On("Wait").Return(true).Once()
+	mToken.On("Done").Return((<-chan struct{})(doneChan)).Once()
 	mToken.On("Error").Return(nil).Once()
 
 	err := mqttClient.Connect()
@@ -228,7 +243,7 @@ func TestMQTTClient_Publish_Error(t *testing.T) {
 	payload := []byte("test_payload")
 
 	mClient.On("Publish", topic, qos, retained, payload).Return(mToken).Once()
-	mToken.On("Wait").Return(true).Once()
+	mToken.On("Done").Return((<-chan struct{})(doneChan)).Once()
 	mToken.On("Error").Return(fmt.Errorf("internal")).Twice()
 
 	err = mqttClient.Publish(topic, qos, retained, payload)

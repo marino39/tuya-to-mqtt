@@ -1,5 +1,7 @@
 # Tuya to MQTT
 
+![build](https://github.com/marino39/tuya-to-mqtt/actions/workflows/go.yml/badge.svg)
+
 ## Introduction
 
 ## MQTT
